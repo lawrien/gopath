@@ -1,9 +1,14 @@
 package gopath
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 )
+
+func init() {
+	fmt.Printf("Hello")
+}
 
 func Find(path string, container interface{}) []interface{} {
 	var results = []interface{}{}
@@ -15,137 +20,146 @@ func Find(path string, container interface{}) []interface{} {
 
 	splitPath := strings.Split(path, "/")
 
-	find(splitPath, container, &results)
+	find(splitPath, reflect.ValueOf(container), &results)
 
 	return results
 }
 
-func find(path []string, container interface{}, results *[]interface{}) {
-	c := reflect.ValueOf(container)
-	if c.Kind() == reflect.Ptr {
-		if c.IsNil() {
-			return
-		} else {
-			c = reflect.Indirect(c)
+func find(path []string, val reflect.Value, results *[]interface{}) {
+	pv := val
+	if pv.Kind() == reflect.Ptr {
+		if pv.IsNil() {
+			pv.Set(reflect.New(pv.Type().Elem()))
 		}
+		val = pv.Elem()
 	}
 
 	if len(path) == 0 {
-		appendValue(results, container)
+		appendValue(results, pv)
 		return
 	}
 
-	switch c.Kind() {
+	switch val.Kind() {
 	case reflect.Struct:
-		findStruct(path, container, results)
+		findStruct(path, pv, results)
 	case reflect.Slice:
-		findSlice(path, container, results)
+		findSlice(path, pv, results)
 	case reflect.Map:
-		findMap(path, container, results)
+		findMap(path, pv, results)
 	}
 }
 
-func appendValue(results *[]interface{}, value interface{}) {
-	val := reflect.ValueOf(value)
-	switch val.Kind() {
-	case reflect.Struct:
-		nv := reflect.New(val.Type()).Elem()
-		nv.Set(val)
-		val = nv
+func appendValue(results *[]interface{}, val reflect.Value) {
+	pv := val
+	if pv.Kind() == reflect.Ptr {
+		val = reflect.Indirect(pv)
 	}
-	// Always put pointers to value where possible
-	if val.CanAddr() {
-		val = val.Addr()
+
+	if val.Kind() == reflect.Struct {
+		if val.CanAddr() {
+			*results = append(*results, val.Addr().Interface())
+			return
+		}
 	}
 	*results = append(*results, val.Interface())
 }
 
-func findStruct(path []string, container interface{}, results *[]interface{}) {
-	c := reflect.ValueOf(container)
-	if c.Kind() == reflect.Ptr {
-		c = reflect.Indirect(c)
+func findStruct(path []string, val reflect.Value, results *[]interface{}) {
+	pv := val
+	if pv.Kind() == reflect.Ptr {
+		if pv.IsNil() {
+			pv.Set(reflect.New(pv.Type().Elem()))
+		}
+		val = pv.Elem()
 	}
-	t := c.Type()
+
+	t := val.Type()
 
 	switch {
 	case path[0] == "**":
 		for i := 0; i < t.NumField(); i++ {
 			field := t.Field(i)
-			value := c.Field(i)
+			value := val.Field(i)
 			if field.Anonymous {
-				find(path, value.Interface(), results)
+				find(path, value, results)
 				continue
 			}
 			if path[1] == field.Name {
-				find(path[2:], value.Interface(), results)
+				find(path[2:], value, results)
 			} else {
-				find(path, value.Interface(), results)
+				find(path, value, results)
 			}
 		}
 	case path[0] == "*":
 		for i := 0; i < t.NumField(); i++ {
 			field := t.Field(i)
-			value := c.Field(i)
+			value := val.Field(i)
 			if field.Anonymous {
-				find(path, value.Interface(), results)
+				find(path, value, results)
 				continue
 			}
 
-			find(path[1:], value.Interface(), results)
+			find(path[1:], value, results)
 		}
 	default:
-		value := c.FieldByName(path[0])
+		value := val.FieldByName(path[0])
 		if value.IsValid() {
-			find(path[1:], value.Interface(), results)
+			find(path[1:], value, results)
 		}
 	}
 }
 
-func findMap(path []string, container interface{}, results *[]interface{}) {
-	c := reflect.ValueOf(container)
-	if c.Kind() == reflect.Ptr {
-		c = reflect.Indirect(c)
+func findMap(path []string, val reflect.Value, results *[]interface{}) {
+	pv := val
+	if pv.Kind() == reflect.Ptr {
+		if pv.IsNil() {
+			pv.Set(reflect.New(pv.Type().Elem()))
+		}
+		val = pv.Elem()
 	}
 
 	switch {
 	case path[0] == "**":
-		for _, key := range c.MapKeys() {
-			value := c.MapIndex(key)
+		for _, key := range val.MapKeys() {
+			value := val.MapIndex(key)
 			if path[1] == key.String() {
-				find(path[2:], value.Interface(), results)
+				find(path[2:], value, results)
 			} else {
-				find(path, value.Interface(), results)
+				find(path, value, results)
 			}
 		}
 	case path[0] == "*":
-		for _, key := range c.MapKeys() {
-			value := c.MapIndex(key)
-			find(path[1:], value.Interface(), results)
+		for _, key := range val.MapKeys() {
+			value := val.MapIndex(key)
+			find(path[1:], value, results)
 		}
 	default:
-		value := c.MapIndex(reflect.ValueOf(path[0]))
+		value := val.MapIndex(reflect.ValueOf(path[0]))
 		if value.IsValid() {
-			find(path[1:], value.Interface(), results)
+			find(path[1:], value, results)
 		}
 	}
 }
 
-func findSlice(path []string, container interface{}, results *[]interface{}) {
-	c := reflect.ValueOf(container)
-	if c.Kind() == reflect.Ptr {
-		c = reflect.Indirect(c)
+func findSlice(path []string, val reflect.Value, results *[]interface{}) {
+	pv := val
+	if pv.Kind() == reflect.Ptr {
+		if pv.IsNil() {
+			pv.Set(reflect.New(pv.Type().Elem()))
+		}
+		val = pv.Elem()
 	}
 
 	switch {
 	case path[0] == "**":
-		for i := 0; i < c.Len(); i++ {
-			value := c.Index(i)
-			find(path, value.Interface(), results)
+		for i := 0; i < val.Len(); i++ {
+			value := val.Index(i)
+			find(path, value, results)
 		}
 	case path[0] == "*":
-		for i := 0; i < c.Len(); i++ {
-			value := c.Index(i)
-			find(path[1:], value.Interface(), results)
+		for i := 0; i < val.Len(); i++ {
+			value := val.Index(i)
+			find(path[1:], value, results)
 		}
 	}
 

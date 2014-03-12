@@ -1,6 +1,7 @@
 package gopath
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -44,6 +45,20 @@ func TestArray(t *testing.T) {
 	}
 }
 
+func TestSlice(t *testing.T) {
+	s := [][]int{{1, 2, 3, 4}, {5, 6, 7, 8}, {9, 10}}
+
+	d := Find("*", s)[0].([]int)
+	for i, n := range d {
+		fmt.Printf("%d = %d\n", i, n)
+	}
+	*(&d) = append(d, 13)
+
+	for i, n := range s[0] {
+		fmt.Printf("%d = %d\n", i, n)
+	}
+}
+
 func TestInplaceUpdate(t *testing.T) {
 	type Fish struct {
 		Name    string
@@ -51,7 +66,7 @@ func TestInplaceUpdate(t *testing.T) {
 		Stripes []int
 	}
 
-	f := &Fish{
+	f := Fish{
 		Name:    "Harold",
 		Spots:   map[int]string{1: "a", 2: "b", 3: "c"},
 		Stripes: []int{1, 2, 3, 4, 5},
@@ -67,5 +82,4 @@ func TestInplaceUpdate(t *testing.T) {
 			t.Fail()
 		}
 	}
-
 }

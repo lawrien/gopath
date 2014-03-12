@@ -9,6 +9,8 @@ func Find(path string, container interface{}) []interface{} {
 	var results = []interface{}{}
 	if path == "" {
 		path = "*"
+	} else {
+		path = strings.Trim(path, "/")
 	}
 
 	splitPath := strings.Split(path, "/")

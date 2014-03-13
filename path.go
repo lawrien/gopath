@@ -25,11 +25,29 @@ func Find(path string, container interface{}) []interface{} {
 	return results
 }
 
+func FindClean(path string, container interface{}) []interface{} {
+	var results = Find(path, container)
+	var clean = []interface{}{}
+	var m = map[interface{}]string{}
+
+	for _, val := range results {
+		m[val] = ""
+	}
+
+	for key, _ := range m {
+		if reflect.ValueOf(key) != reflect.Zero(reflect.TypeOf(key)) {
+			clean = append(clean, key)
+		}
+	}
+
+	return clean
+}
+
 func find(path []string, val reflect.Value, results *[]interface{}) {
 	pv := val
 	if pv.Kind() == reflect.Ptr {
 		if pv.IsNil() {
-			pv.Set(reflect.New(pv.Type().Elem()))
+			return
 		}
 		val = pv.Elem()
 	}

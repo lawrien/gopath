@@ -1,14 +1,9 @@
 package gopath
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 )
-
-func init() {
-	fmt.Printf("Hello")
-}
 
 func Find(path string, container interface{}) []interface{} {
 	var results = []interface{}{}

@@ -78,37 +78,30 @@ func (self *Iter) appendValue(val reflect.Value) {
 }
 
 func (self *Iter) find(path []string, val reflect.Value) {
-	pv := val
-	if pv.Kind() == reflect.Ptr {
-		if pv.IsNil() {
+
+	if val.Kind() == reflect.Ptr {
+		if val.IsNil() {
 			return
 		}
-		val = pv.Elem()
+		val = reflect.Indirect(val)
 	}
 
 	if len(path) == 0 {
-		self.appendValue(pv)
+		self.appendValue(val)
 		return
 	}
 
 	switch val.Kind() {
 	case reflect.Struct:
-		self.findStruct(path, pv)
+		self.findStruct(path, val)
 	case reflect.Slice:
-		self.findSlice(path, pv)
+		self.findSlice(path, val)
 	case reflect.Map:
-		self.findMap(path, pv)
+		self.findMap(path, val)
 	}
 }
 
 func (self *Iter) findStruct(path []string, val reflect.Value) {
-	pv := val
-	if pv.Kind() == reflect.Ptr {
-		if pv.IsNil() {
-			pv.Set(reflect.New(pv.Type().Elem()))
-		}
-		val = pv.Elem()
-	}
 
 	t := val.Type()
 
@@ -147,13 +140,6 @@ func (self *Iter) findStruct(path []string, val reflect.Value) {
 }
 
 func (self *Iter) findMap(path []string, val reflect.Value) {
-	pv := val
-	if pv.Kind() == reflect.Ptr {
-		if pv.IsNil() {
-			pv.Set(reflect.New(pv.Type().Elem()))
-		}
-		val = pv.Elem()
-	}
 
 	switch {
 	case path[0] == "**":
@@ -179,13 +165,6 @@ func (self *Iter) findMap(path []string, val reflect.Value) {
 }
 
 func (self *Iter) findSlice(path []string, val reflect.Value) {
-	pv := val
-	if pv.Kind() == reflect.Ptr {
-		if pv.IsNil() {
-			pv.Set(reflect.New(pv.Type().Elem()))
-		}
-		val = pv.Elem()
-	}
 
 	switch {
 	case path[0] == "**":

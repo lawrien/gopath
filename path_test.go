@@ -65,7 +65,7 @@ func TestSlice(t *testing.T) {
 
 	it = NewPath("**/*").Iter(s)
 	for i := 0; it.Next(); i++ {
-		fmt.Printf("Array => %s\n", it.Value())
+		fmt.Printf("Array or arrays => %s\n", it.Value())
 	}
 
 }

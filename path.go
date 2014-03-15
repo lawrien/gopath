@@ -1,7 +1,6 @@
 package gopath
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 )
@@ -113,19 +112,15 @@ func (self *Iter) findStruct(path []string, val reflect.Value) {
 
 	switch {
 	case path[0] == "**":
+		self.find(path[1:], val)
 		for i := 0; i < t.NumField(); i++ {
-			field := t.Field(i)
 			value := val.Field(i)
-			if field.Anonymous {
-				self.find(path, value)
-				continue
-			}
-			if path[1] == field.Name {
-				self.find(path[2:], value)
-			} else {
+
+			if isContainer(value) {
 				self.find(path, value)
 			}
 		}
+
 	case path[0] == "*":
 		for i := 0; i < t.NumField(); i++ {
 			field := t.Field(i)
@@ -149,11 +144,10 @@ func (self *Iter) findMap(path []string, val reflect.Value) {
 
 	switch {
 	case path[0] == "**":
+		self.find(path[1:], val)
 		for _, key := range val.MapKeys() {
 			value := val.MapIndex(key)
-			if path[1] == key.String() {
-				self.find(path[2:], value)
-			} else {
+			if isContainer(value) {
 				self.find(path, value)
 			}
 		}
@@ -174,7 +168,7 @@ func (self *Iter) findSlice(path []string, val reflect.Value) {
 
 	switch {
 	case path[0] == "**":
-		fmt.Printf("** on %s\n", val)
+		self.find(path[1:], val)
 		for i := 0; i < val.Len(); i++ {
 			value := val.Index(i)
 
@@ -182,9 +176,7 @@ func (self *Iter) findSlice(path []string, val reflect.Value) {
 				self.find(path, value)
 			}
 		}
-		self.find(path[1:], val)
 	case path[0] == "*":
-		fmt.Printf("* on %s\n", val)
 		for i := 0; i < val.Len(); i++ {
 			value := val.Index(i)
 			self.find(path[1:], value)

@@ -68,12 +68,6 @@ func (self *Iter) appendValue(val reflect.Value) {
 		val = reflect.Indirect(val)
 	}
 
-	// if val.Kind() == reflect.Struct {
-	// 	if val.CanAddr() {
-	// 		*results = append(*results, val.Addr().Interface())
-	// 		return
-	// 	}
-	// }
 	self.values = append(self.values, val)
 }
 

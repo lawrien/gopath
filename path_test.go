@@ -47,6 +47,12 @@ func TestArray(t *testing.T) {
 			t.Fail()
 		}
 	}
+
+	it = NewPath("**/Name").Iter(jim)
+	for i := 0; it.Next(); i++ {
+		name := it.Value().(string)
+		fmt.Printf("Friend names -> %s\n", name)
+	}
 }
 
 func TestSlice(t *testing.T) {
@@ -56,6 +62,7 @@ func TestSlice(t *testing.T) {
 	for i := 0; it.Next(); i++ {
 		fmt.Printf("Array => %s\n", it.Value())
 	}
+
 	it = NewPath("**/*").Iter(s)
 	for i := 0; it.Next(); i++ {
 		fmt.Printf("Array => %s\n", it.Value())

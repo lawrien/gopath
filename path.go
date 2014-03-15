@@ -1,6 +1,7 @@
 package gopath
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -26,6 +27,17 @@ func (self *Iter) Value() interface{} {
 		return self.next.Interface()
 	}
 	return nil
+}
+
+func isContainer(val reflect.Value) bool {
+	if !val.IsValid() {
+		return false
+	}
+	if val.Kind() == reflect.Ptr {
+		val = reflect.Indirect(val)
+	}
+	k := val.Kind()
+	return (k == reflect.Struct || k == reflect.Slice || k == reflect.Map)
 }
 
 type Path struct {
@@ -162,11 +174,17 @@ func (self *Iter) findSlice(path []string, val reflect.Value) {
 
 	switch {
 	case path[0] == "**":
+		fmt.Printf("** on %s\n", val)
 		for i := 0; i < val.Len(); i++ {
 			value := val.Index(i)
-			self.find(path, value)
+
+			if isContainer(value) {
+				self.find(path, value)
+			}
 		}
+		self.find(path[1:], val)
 	case path[0] == "*":
+		fmt.Printf("* on %s\n", val)
 		for i := 0; i < val.Len(); i++ {
 			value := val.Index(i)
 			self.find(path[1:], value)

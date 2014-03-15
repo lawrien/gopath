@@ -1,6 +1,7 @@
 package gopath
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -13,7 +14,7 @@ type Iter struct {
 
 func (self *Iter) Next() bool {
 	self.next = reflect.Value{}
-	if self.index > len(self.values) {
+	if self.index >= len(self.values) {
 		return false
 	}
 	self.next = self.values[self.index]
@@ -45,6 +46,7 @@ func NewPath(path string, container interface{}) *Path {
 
 	p := &Path{path: splitPath, container: reflect.ValueOf(container)}
 	p.results = []reflect.Value{}
+	p.find(splitPath, reflect.ValueOf(container))
 	return p
 }
 
@@ -52,10 +54,21 @@ func (self *Path) Iter() *Iter {
 	return &Iter{values: self.results}
 }
 
+func (self *Path) First() (interface{}, bool) {
+	i := self.Iter()
+	if i.Next() {
+		return i.Value(), true
+	} else {
+		return nil, false
+	}
+}
+
 func (self *Path) appendValue(val reflect.Value) {
-	pv := val
-	if pv.Kind() == reflect.Ptr {
-		val = reflect.Indirect(pv)
+	if !val.IsValid() {
+		return
+	}
+	if val.Kind() == reflect.Ptr {
+		val = reflect.Indirect(val)
 	}
 
 	// if val.Kind() == reflect.Struct {

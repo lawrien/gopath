@@ -5,8 +5,36 @@ import (
 	"strings"
 )
 
-func Find(path string, container interface{}) []interface{} {
-	var results = []interface{}{}
+type Iter struct {
+	values []reflect.Value
+	index  int
+	next   reflect.Value
+}
+
+func (self *Iter) Next() bool {
+	self.next = reflect.Value{}
+	if self.index > len(self.values) {
+		return false
+	}
+	self.next = self.values[self.index]
+	self.index += 1
+	return true
+}
+
+func (self *Iter) Value() interface{} {
+	if self.next.IsValid() {
+		return self.next.Interface()
+	}
+	return nil
+}
+
+type Path struct {
+	results   []reflect.Value
+	container reflect.Value
+	path      []string
+}
+
+func NewPath(path string, container interface{}) *Path {
 	if path == "" {
 		path = "*"
 	} else {
@@ -15,30 +43,31 @@ func Find(path string, container interface{}) []interface{} {
 
 	splitPath := strings.Split(path, "/")
 
-	find(splitPath, reflect.ValueOf(container), &results)
-
-	return results
+	p := &Path{path: splitPath, container: reflect.ValueOf(container)}
+	p.results = []reflect.Value{}
+	return p
 }
 
-func FindClean(path string, container interface{}) []interface{} {
-	var results = Find(path, container)
-	var clean = []interface{}{}
-	var m = map[interface{}]string{}
-
-	for _, val := range results {
-		m[val] = ""
-	}
-
-	for key, _ := range m {
-		if reflect.ValueOf(key) != reflect.Zero(reflect.TypeOf(key)) {
-			clean = append(clean, key)
-		}
-	}
-
-	return clean
+func (self *Path) Iter() *Iter {
+	return &Iter{values: self.results}
 }
 
-func find(path []string, val reflect.Value, results *[]interface{}) {
+func (self *Path) appendValue(val reflect.Value) {
+	pv := val
+	if pv.Kind() == reflect.Ptr {
+		val = reflect.Indirect(pv)
+	}
+
+	// if val.Kind() == reflect.Struct {
+	// 	if val.CanAddr() {
+	// 		*results = append(*results, val.Addr().Interface())
+	// 		return
+	// 	}
+	// }
+	self.results = append(self.results, val)
+}
+
+func (self *Path) find(path []string, val reflect.Value) {
 	pv := val
 	if pv.Kind() == reflect.Ptr {
 		if pv.IsNil() {
@@ -48,36 +77,21 @@ func find(path []string, val reflect.Value, results *[]interface{}) {
 	}
 
 	if len(path) == 0 {
-		appendValue(results, pv)
+		self.appendValue(pv)
 		return
 	}
 
 	switch val.Kind() {
 	case reflect.Struct:
-		findStruct(path, pv, results)
+		self.findStruct(path, pv)
 	case reflect.Slice:
-		findSlice(path, pv, results)
+		self.findSlice(path, pv)
 	case reflect.Map:
-		findMap(path, pv, results)
+		self.findMap(path, pv)
 	}
 }
 
-func appendValue(results *[]interface{}, val reflect.Value) {
-	pv := val
-	if pv.Kind() == reflect.Ptr {
-		val = reflect.Indirect(pv)
-	}
-
-	if val.Kind() == reflect.Struct {
-		if val.CanAddr() {
-			*results = append(*results, val.Addr().Interface())
-			return
-		}
-	}
-	*results = append(*results, val.Interface())
-}
-
-func findStruct(path []string, val reflect.Value, results *[]interface{}) {
+func (self *Path) findStruct(path []string, val reflect.Value) {
 	pv := val
 	if pv.Kind() == reflect.Ptr {
 		if pv.IsNil() {
@@ -94,13 +108,13 @@ func findStruct(path []string, val reflect.Value, results *[]interface{}) {
 			field := t.Field(i)
 			value := val.Field(i)
 			if field.Anonymous {
-				find(path, value, results)
+				self.find(path, value)
 				continue
 			}
 			if path[1] == field.Name {
-				find(path[2:], value, results)
+				self.find(path[2:], value)
 			} else {
-				find(path, value, results)
+				self.find(path, value)
 			}
 		}
 	case path[0] == "*":
@@ -108,21 +122,21 @@ func findStruct(path []string, val reflect.Value, results *[]interface{}) {
 			field := t.Field(i)
 			value := val.Field(i)
 			if field.Anonymous {
-				find(path, value, results)
+				self.find(path, value)
 				continue
 			}
 
-			find(path[1:], value, results)
+			self.find(path[1:], value)
 		}
 	default:
 		value := val.FieldByName(path[0])
 		if value.IsValid() {
-			find(path[1:], value, results)
+			self.find(path[1:], value)
 		}
 	}
 }
 
-func findMap(path []string, val reflect.Value, results *[]interface{}) {
+func (self *Path) findMap(path []string, val reflect.Value) {
 	pv := val
 	if pv.Kind() == reflect.Ptr {
 		if pv.IsNil() {
@@ -136,25 +150,25 @@ func findMap(path []string, val reflect.Value, results *[]interface{}) {
 		for _, key := range val.MapKeys() {
 			value := val.MapIndex(key)
 			if path[1] == key.String() {
-				find(path[2:], value, results)
+				self.find(path[2:], value)
 			} else {
-				find(path, value, results)
+				self.find(path, value)
 			}
 		}
 	case path[0] == "*":
 		for _, key := range val.MapKeys() {
 			value := val.MapIndex(key)
-			find(path[1:], value, results)
+			self.find(path[1:], value)
 		}
 	default:
 		value := val.MapIndex(reflect.ValueOf(path[0]))
 		if value.IsValid() {
-			find(path[1:], value, results)
+			self.find(path[1:], value)
 		}
 	}
 }
 
-func findSlice(path []string, val reflect.Value, results *[]interface{}) {
+func (self *Path) findSlice(path []string, val reflect.Value) {
 	pv := val
 	if pv.Kind() == reflect.Ptr {
 		if pv.IsNil() {
@@ -167,12 +181,12 @@ func findSlice(path []string, val reflect.Value, results *[]interface{}) {
 	case path[0] == "**":
 		for i := 0; i < val.Len(); i++ {
 			value := val.Index(i)
-			find(path, value, results)
+			self.find(path, value)
 		}
 	case path[0] == "*":
 		for i := 0; i < val.Len(); i++ {
 			value := val.Index(i)
-			find(path[1:], value, results)
+			self.find(path[1:], value)
 		}
 	}
 

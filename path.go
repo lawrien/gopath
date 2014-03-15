@@ -1,7 +1,6 @@
 package gopath
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 )
@@ -30,12 +29,10 @@ func (self *Iter) Value() interface{} {
 }
 
 type Path struct {
-	results   []reflect.Value
-	container reflect.Value
-	path      []string
+	path []string
 }
 
-func NewPath(path string, container interface{}) *Path {
+func NewPath(path string) *Path {
 	if path == "" {
 		path = "*"
 	} else {
@@ -44,18 +41,18 @@ func NewPath(path string, container interface{}) *Path {
 
 	splitPath := strings.Split(path, "/")
 
-	p := &Path{path: splitPath, container: reflect.ValueOf(container)}
-	p.results = []reflect.Value{}
-	p.find(splitPath, reflect.ValueOf(container))
+	p := &Path{path: splitPath}
 	return p
 }
 
-func (self *Path) Iter() *Iter {
-	return &Iter{values: self.results}
+func (self *Path) Iter(container interface{}) *Iter {
+	i := &Iter{}
+	i.find(self.path, reflect.ValueOf(container))
+	return i
 }
 
-func (self *Path) First() (interface{}, bool) {
-	i := self.Iter()
+func (self *Path) First(container interface{}) (interface{}, bool) {
+	i := self.Iter(container)
 	if i.Next() {
 		return i.Value(), true
 	} else {
@@ -63,7 +60,7 @@ func (self *Path) First() (interface{}, bool) {
 	}
 }
 
-func (self *Path) appendValue(val reflect.Value) {
+func (self *Iter) appendValue(val reflect.Value) {
 	if !val.IsValid() {
 		return
 	}
@@ -77,10 +74,10 @@ func (self *Path) appendValue(val reflect.Value) {
 	// 		return
 	// 	}
 	// }
-	self.results = append(self.results, val)
+	self.values = append(self.values, val)
 }
 
-func (self *Path) find(path []string, val reflect.Value) {
+func (self *Iter) find(path []string, val reflect.Value) {
 	pv := val
 	if pv.Kind() == reflect.Ptr {
 		if pv.IsNil() {
@@ -104,7 +101,7 @@ func (self *Path) find(path []string, val reflect.Value) {
 	}
 }
 
-func (self *Path) findStruct(path []string, val reflect.Value) {
+func (self *Iter) findStruct(path []string, val reflect.Value) {
 	pv := val
 	if pv.Kind() == reflect.Ptr {
 		if pv.IsNil() {
@@ -149,7 +146,7 @@ func (self *Path) findStruct(path []string, val reflect.Value) {
 	}
 }
 
-func (self *Path) findMap(path []string, val reflect.Value) {
+func (self *Iter) findMap(path []string, val reflect.Value) {
 	pv := val
 	if pv.Kind() == reflect.Ptr {
 		if pv.IsNil() {
@@ -181,7 +178,7 @@ func (self *Path) findMap(path []string, val reflect.Value) {
 	}
 }
 
-func (self *Path) findSlice(path []string, val reflect.Value) {
+func (self *Iter) findSlice(path []string, val reflect.Value) {
 	pv := val
 	if pv.Kind() == reflect.Ptr {
 		if pv.IsNil() {

@@ -14,7 +14,7 @@ type Person struct {
 func TestSimple(t *testing.T) {
 	jim := Person{Name: "Jim", Age: 31}
 
-	if name, ok := NewPath("Name", &jim).First(); ok {
+	if name, ok := NewPath("Name").First(jim); ok {
 		if name.(string) != jim.Name {
 			t.Fail()
 		}
@@ -23,7 +23,7 @@ func TestSimple(t *testing.T) {
 		t.Fail()
 	}
 
-	if age, ok := NewPath("Age", &jim).First(); ok {
+	if age, ok := NewPath("Age").First(jim); ok {
 		if age.(int) != jim.Age {
 			t.Fail()
 		}
@@ -33,38 +33,35 @@ func TestSimple(t *testing.T) {
 	}
 }
 
-// func TestArray(t *testing.T) {
-// 	jim := Person{Name: "Jim", Age: 31}
+func TestArray(t *testing.T) {
+	jim := Person{Name: "Jim", Age: 31}
 
-// 	jim.Friends = append(jim.Friends, Person{Name: "John", Age: 44})
-// 	jim.Friends = append(jim.Friends, Person{Name: "Claire", Age: 62})
+	jim.Friends = append(jim.Friends, Person{Name: "John", Age: 44})
+	jim.Friends = append(jim.Friends, Person{Name: "Claire", Age: 62})
 
-// 	names := Find("/Friends/*/Name", &jim)
+	it := NewPath("/Friends/*/Name").Iter(jim)
+	for i := 0; it.Next(); i++ {
+		name := it.Value().(string)
+		fmt.Printf("Friend -> %s\n", name)
+		if jim.Friends[i].Name != name {
+			t.Fail()
+		}
+	}
+}
 
-// 	if len(names) != len(jim.Friends) {
-// 		t.Fail()
-// 	}
+func TestSlice(t *testing.T) {
+	s := [][]int{{1, 2, 3, 4}, {5, 6, 7, 8}, {9, 10}}
 
-// 	for i, name := range names {
-// 		if jim.Friends[i].Name != name {
-// 			t.Fail()
-// 		}
-// 	}
-// }
+	it := NewPath("*").Iter(s)
+	for i := 0; it.Next(); i++ {
+		fmt.Printf("Array => %s\n", it.Value())
+	}
+	it = NewPath("**/*").Iter(s)
+	for i := 0; it.Next(); i++ {
+		fmt.Printf("Array => %s\n", it.Value())
+	}
 
-// func TestSlice(t *testing.T) {
-// 	s := [][]int{{1, 2, 3, 4}, {5, 6, 7, 8}, {9, 10}}
-
-// 	d := Find("*", s)[0].([]int)
-// 	for i, n := range d {
-// 		fmt.Printf("%d = %d\n", i, n)
-// 	}
-// 	*(&d) = append(d, 13)
-
-// 	for i, n := range s[0] {
-// 		fmt.Printf("%d = %d\n", i, n)
-// 	}
-// }
+}
 
 // func TestInplaceUpdate(t *testing.T) {
 // 	type Fish struct {

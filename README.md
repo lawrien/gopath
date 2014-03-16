@@ -10,12 +10,21 @@ Import the package using the `go get` command.
     go get github.com/lawrien/gopath
 
 ## API
-There is a single public method that will accept a path and container (any valid `struct`,`map` or `slice`
-at this stage). 
+Finding items is done by creating in three steps:
 
-    gopath.Find(path string, container interface{}) []interface{}
+  * Create a Path object using the `gopath.NewPath` API
 
-Any data that matches the given path will be returned in an array. 
+        path := gopath.NewPath("*/People/Ages")
+
+  * Create and iterator for the path, passing in the object to be searched:
+
+        iter := path.Iter(myobj)    
+
+  * Use the Next() and Value() APIs of the Iterator to walk through the available results:
+
+        for iter.Next() {
+          v := iter.Value()
+        }    
 
 ### Path Syntax
 
@@ -30,15 +39,13 @@ Nothing fancy here, just three different parts available to the path:
       import "github.com/lawrien/gopath"
       jim := Person{Name: "Jim", Age: 31}
 
-      name := gopath.Find("Name", jim)[0].(string)
-      age := gopath.Find("Age", jim)[0].(int)
-
-      // Give Jim some friends
       jim.Friends = append(jim.Friends, Person{Name: "John", Age: 44})
       jim.Friends = append(jim.Friends, Person{Name: "Claire", Age: 62})
-
-      for i, name := range Find("Friends/Name", jim) {
-        fmt.Printf("Jim has %s as a friend.\n",name)
+      
+      it := NewPath("/Friends/*/Name").Iter(jim)
+      for i := 0; it.Next(); i++ {
+        name := it.Value().(string)
+        fmt.Printf("Friend -> %s\n", name)
       }
     
 
@@ -58,16 +65,10 @@ some simple rules:
 As with all things Go, `gopath` can only operate on `public` structs and fields. Anything 
 private will not be found.
 
-Currently, a `struct`s are returned as pointers to the struct 
-data, not as a copy - this does allow in-place updating of data, but be aware as type
-assertations might not work the way you think:
-
-    x := gopath.Find("/path/to/mystruct",someobj)[0]
-    x.(*Mystruct) // right
-    x.(Mystruct)  // wrong
+If you need a pointer to an item (ie so you can modify the contents), use the `Iter.ValuePtr()` API rather than `Iter.Value()`.
 
 Dont be surprised that accessing a slice returns a slice ! If you want the content of a slice, 
-you should use a path like `gopath.Find("/myarray/*",someobj)`.
+you should use a path like `myarray/*`.
 
 
 

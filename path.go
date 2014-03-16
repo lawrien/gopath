@@ -28,6 +28,15 @@ func (self *Iter) Value() interface{} {
 	return nil
 }
 
+func (self *Iter) ValuePtr() interface{} {
+	if self.next.IsValid() {
+		if self.next.CanAddr() {
+			return self.next.Addr().Interface()
+		}
+	}
+	return nil
+}
+
 func isContainer(val reflect.Value) bool {
 	if !val.IsValid() {
 		return false
